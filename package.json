@@ -1,0 +1,15 @@
+{
+  "name": "miller-ynab-utility",
+  "version": "1.0.0",
+  "description": "A sliced and diced perspective on our budget",
+  "main": "ynab.js",
+  "dependencies": {
+    "ynab": "^1.20.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nick Miller",
+  "license": "ISC"
+}
