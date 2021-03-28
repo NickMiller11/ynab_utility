@@ -1,7 +1,7 @@
 const ynab = require("ynab");
 
 const { accessToken } = require('./config');
-const RETIREMENT_AC_NAMES = ['Vanguard - N', 'Vanguard - H', 'Science37 401K', 'Betterment - 401K'];
+const RETIREMENT_AC_NAMES = ['Vanguard - N', 'Vanguard - H', 'Anthem HSA'];
 const SAFE_WITHDRAWL_RATE = 0.04;
 const CATEGORY_GROUPS = [
   { name: 'Fixed Essential', value: 'budgeted', type: 'essential' },
