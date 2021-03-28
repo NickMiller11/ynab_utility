@@ -1,7 +1,6 @@
 const ynab = require("ynab");
 
-const { accessToken } = require('./config');
-const RETIREMENT_AC_NAMES = ['Vanguard - N', 'Vanguard - H', 'Anthem HSA'];
+const { accessToken, retirementAccountNames } = require('./config');
 const SAFE_WITHDRAWL_RATE = 0.04;
 const CATEGORY_GROUPS = [
   { name: 'Fixed Essential', value: 'budgeted', type: 'essential' },
@@ -28,7 +27,7 @@ const getRetirementAccounts = async (bearBudgetId) => {
   const accountData = await ynabAPI.accounts.getAccounts(bearBudgetId);
   const accounts = accountData.data.accounts;
   const retirementAccounts = accounts.filter(account => {
-    return !!RETIREMENT_AC_NAMES.find(name => name === account.name);
+    return !!retirementAccountNames.find(name => name === account.name);
   });
 
   return retirementAccounts;
