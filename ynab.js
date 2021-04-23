@@ -1,13 +1,15 @@
 const ynab = require("ynab");
 
-const { accessToken, retirementAccountNames } = require('./config');
+const { 
+  accessToken, 
+  budgetName, 
+  retirementAccountNames, 
+  categoryGroups,
+  safeWithdrawlRate,
+} = require('./config');
+
 const SAFE_WITHDRAWL_RATE = 0.04;
-const CATEGORY_GROUPS = [
-  { name: 'Fixed Essential', value: 'budgeted', type: 'essential' },
-  { name: 'Fixed Nonessential', value: 'budgeted', type: 'nonessential' },
-  { name: 'Flex Essential', value: 'activity', type: 'essential' },
-  { name: 'Flex Nonessential', value: 'activity', type: 'nonessential' },
-];
+
 
 
 const ynabAPI = new ynab.API(accessToken);
@@ -17,14 +19,14 @@ const formatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
 });
 
-const getBearBudgetId = async () => {
+const getBudgetId = async () => {
   const budgetsResponse = await ynabAPI.budgets.getBudgets();
   const budgets = budgetsResponse.data.budgets;
-  return budgets.filter((budget => budget.name === 'Bears Shared Budget'))[0].id;
+  return budgets.filter((budget => budget.name === budgetName))[0].id;
 };
 
-const getRetirementAccounts = async (bearBudgetId) => {
-  const accountData = await ynabAPI.accounts.getAccounts(bearBudgetId);
+const getRetirementAccounts = async (budgetId) => {
+  const accountData = await ynabAPI.accounts.getAccounts(budgetId);
   const accounts = accountData.data.accounts;
   const retirementAccounts = accounts.filter(account => {
     return !!retirementAccountNames.find(name => name === account.name);
@@ -54,8 +56,8 @@ const outputIncomeReport = (retirementValues) => {
   console.log();
 };
 
-const calculateRetirementValue = async (bearBudgetId) => {
-  const retirementAccounts = await getRetirementAccounts(bearBudgetId);
+const calculateRetirementValue = async (budgetId) => {
+  const retirementAccounts = await getRetirementAccounts(budgetId);
   const retirementAccountBalances = await getAccountBalances(retirementAccounts);
 
   const totalRetirementValue = retirementAccountBalances.reduce((total, amount) => total + amount);
@@ -64,25 +66,25 @@ const calculateRetirementValue = async (bearBudgetId) => {
 
 const formatRetirementValues = (totalValue) => {
   const totalBalance = formatter.format(totalValue);
-  const annualIncome = formatter.format(totalValue * SAFE_WITHDRAWL_RATE);
-  const monthlyIncome = formatter.format((totalValue * SAFE_WITHDRAWL_RATE) / 12);
+  const annualIncome = formatter.format(totalValue * safeWithdrawlRate);
+  const monthlyIncome = formatter.format((totalValue * safeWithdrawlRate) / 12);
   return { totalBalance, annualIncome, monthlyIncome };
 };
 
 const filterCategoryGroupData = (allCategoryGroups) => {
   const categoryNames = [];
-  CATEGORY_GROUPS.forEach(category => categoryNames.push(category.name));
+  categoryGroups.forEach(category => categoryNames.push(category.name));
   return allCategoryGroups.filter(group => {
     return categoryNames.includes(group.name);
   });
 }
 
-const calculateExpenditureValues = async (bearBudgetId) => {
-  const rawCategoryData = await ynabAPI.categories.getCategories(bearBudgetId);
+const calculateExpenditureValues = async (budgetId) => {
+  const rawCategoryData = await ynabAPI.categories.getCategories(budgetId);
   const allCategoryGroups = rawCategoryData.data.category_groups;
   const filteredGroupRawData = filterCategoryGroupData(allCategoryGroups);
   const selectedGroupData = [];
-  CATEGORY_GROUPS.forEach(group => {
+  categoryGroups.forEach(group => {
     const groupData = { name: group.name, type: group.type };
     const categoryGroupData = filteredGroupRawData.find(groupObject => groupObject.name === group.name);
     const valueType = categoryGroupData.name.split(' ')[0];
@@ -114,10 +116,10 @@ const outputExpenditureReport = (expenses) => {
 };
 
 (async function() {
-  const bearBudgetId = await getBearBudgetId();
-  const retirementValues = await calculateRetirementValue(bearBudgetId); 
+  const budgetId = await getBudgetId();
+  const retirementValues = await calculateRetirementValue(budgetId); 
   outputIncomeReport(retirementValues);
-  const expenditureValues = await calculateExpenditureValues(bearBudgetId);
+  const expenditureValues = await calculateExpenditureValues(budgetId);
   outputExpenditureReport(expenditureValues);
 })();
 
