@@ -1,14 +1,12 @@
 const ynab = require("ynab");
 
-const { accessToken, retirementAccountNames } = require('./config');
-const SAFE_WITHDRAWL_RATE = 0.04;
-const CATEGORY_GROUPS = [
-  { name: 'Fixed Essential', value: 'budgeted', type: 'essential' },
-  { name: 'Fixed Nonessential', value: 'budgeted', type: 'nonessential' },
-  { name: 'Flex Essential', value: 'activity', type: 'essential' },
-  { name: 'Flex Nonessential', value: 'activity', type: 'nonessential' },
-];
-
+const { 
+  accessToken, 
+  budgetName, 
+  retirementAccountNames, 
+  categoryGroups,
+  safeWithdrawlRate,
+} = require('./config');
 
 const ynabAPI = new ynab.API(accessToken);
 
@@ -17,14 +15,20 @@ const formatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
 });
 
-const getBearBudgetId = async () => {
+/** Retrieves the budget ID based on the budget name */
+const getBudgetId = async () => {
   const budgetsResponse = await ynabAPI.budgets.getBudgets();
   const budgets = budgetsResponse.data.budgets;
-  return budgets.filter((budget => budget.name === 'Bears Shared Budget'))[0].id;
+  return budgets.filter((budget => budget.name === budgetName))[0].id;
 };
 
-const getRetirementAccounts = async (bearBudgetId) => {
-  const accountData = await ynabAPI.accounts.getAccounts(bearBudgetId);
+/*
+-------- Retirement Income Functions -----------
+*/
+
+/** Returns account information based on the names of the retirement accounts in config.js */
+const getRetirementAccounts = async (budgetId) => {
+  const accountData = await ynabAPI.accounts.getAccounts(budgetId);
   const accounts = accountData.data.accounts;
   const retirementAccounts = accounts.filter(account => {
     return !!retirementAccountNames.find(name => name === account.name);
@@ -33,6 +37,7 @@ const getRetirementAccounts = async (bearBudgetId) => {
   return retirementAccounts;
 };
 
+/** Return an array balances for an array of accounts */
 const getAccountBalances = (accounts) => {
   const balances = [];
   for (let account of accounts) {
@@ -44,9 +49,12 @@ const getAccountBalances = (accounts) => {
   return adjustedBalances;
 }
 
+/** Helper function to format the retirement income output */
 const outputIncomeReport = (retirementValues) => {
   const { totalBalance, annualIncome, monthlyIncome } = retirementValues;
 
+  console.log();
+  console.log('------- Retirement Income -------');
   console.log();
   console.log(`Total retirement funds: ${totalBalance}`);
   console.log(`Annual retirement income: ${annualIncome}`);
@@ -54,35 +62,41 @@ const outputIncomeReport = (retirementValues) => {
   console.log();
 };
 
-const calculateRetirementValue = async (bearBudgetId) => {
-  const retirementAccounts = await getRetirementAccounts(bearBudgetId);
+/** Returns the total balance from retirement accounts and projected annual and monthly income */
+const calculateRetirementValue = async (budgetId) => {
+  const retirementAccounts = await getRetirementAccounts(budgetId);
   const retirementAccountBalances = await getAccountBalances(retirementAccounts);
 
   const totalRetirementValue = retirementAccountBalances.reduce((total, amount) => total + amount);
   return formatRetirementValues(totalRetirementValue);
 };
 
+/** Formats balances and income into dollar amounts based on safe withdrawl rate in config.js  */
 const formatRetirementValues = (totalValue) => {
   const totalBalance = formatter.format(totalValue);
-  const annualIncome = formatter.format(totalValue * SAFE_WITHDRAWL_RATE);
-  const monthlyIncome = formatter.format((totalValue * SAFE_WITHDRAWL_RATE) / 12);
+  const annualIncome = formatter.format(totalValue * safeWithdrawlRate);
+  const monthlyIncome = formatter.format((totalValue * safeWithdrawlRate) / 12);
   return { totalBalance, annualIncome, monthlyIncome };
 };
 
+/*
+-------- Expense Functions -----------
+*/
+
+/** Returns categroy group information for groups in config.js */
 const filterCategoryGroupData = (allCategoryGroups) => {
   const categoryNames = [];
-  CATEGORY_GROUPS.forEach(category => categoryNames.push(category.name));
+  categoryGroups.forEach(category => categoryNames.push(category.name));
   return allCategoryGroups.filter(group => {
     return categoryNames.includes(group.name);
   });
 }
 
-const calculateExpenditureValues = async (bearBudgetId) => {
-  const rawCategoryData = await ynabAPI.categories.getCategories(bearBudgetId);
-  const allCategoryGroups = rawCategoryData.data.category_groups;
-  const filteredGroupRawData = filterCategoryGroupData(allCategoryGroups);
+/** Calculates expenditure totals based on category group value in config.js */
+const extractExpendituresByType = (filteredGroupRawData) => {
   const selectedGroupData = [];
-  CATEGORY_GROUPS.forEach(group => {
+
+  categoryGroups.forEach(group => {
     const groupData = { name: group.name, type: group.type };
     const categoryGroupData = filteredGroupRawData.find(groupObject => groupObject.name === group.name);
     const valueType = categoryGroupData.name.split(' ')[0];
@@ -96,28 +110,47 @@ const calculateExpenditureValues = async (bearBudgetId) => {
     selectedGroupData.push(groupData)
   })
 
+  return selectedGroupData;
+};
+
+/** Calcalates essential and total expenditure amounts */
+const formatExpenditureOutput = (selectedGroupData) => {
   let essentialExp = selectedGroupData.filter(group => group.type === 'essential').reduce((a, b) => ({ value: a.value + b.value })).value;
   let totalExp = selectedGroupData.reduce((a, b) => ({ value: a.value + b.value })).value;
   essentialExp = formatter.format(essentialExp);
   totalExp = formatter.format(totalExp);
 
-  return { essentialExp, totalExp };
+  return { essentialExp, totalExp }
+}
+
+/** Retrieves category group information and returns expenditure amount based on group value and type */
+const calculateExpenditureValues = async (budgetId) => {
+  const rawCategoryData = await ynabAPI.categories.getCategories(budgetId);
+  const allCategoryGroups = rawCategoryData.data.category_groups;
+  const filteredGroupRawData = filterCategoryGroupData(allCategoryGroups);
+  selectedGroupData = extractExpendituresByType(filteredGroupRawData);
+
+  return formatExpenditureOutput(selectedGroupData);
 };
 
+/** Helper function to format the expenses output */
 const outputExpenditureReport = (expenses) => {
   const { essentialExp, totalExp } = expenses;
 
+  console.log()
+  console.log('----------- Expenses ------------')
   console.log();
   console.log(`Essential expenses this month: ${essentialExp}`);
   console.log(`Total expenses this month: ${totalExp}`);
   console.log();
 };
 
+/** Main function */
 (async function() {
-  const bearBudgetId = await getBearBudgetId();
-  const retirementValues = await calculateRetirementValue(bearBudgetId); 
+  const budgetId = await getBudgetId();
+  const retirementValues = await calculateRetirementValue(budgetId); 
   outputIncomeReport(retirementValues);
-  const expenditureValues = await calculateExpenditureValues(bearBudgetId);
+  const expenditureValues = await calculateExpenditureValues(budgetId);
   outputExpenditureReport(expenditureValues);
 })();
 
