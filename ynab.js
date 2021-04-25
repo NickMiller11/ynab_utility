@@ -8,8 +8,6 @@ const {
   safeWithdrawlRate,
 } = require('./config');
 
-const SAFE_WITHDRAWL_RATE = 0.04;
-
 const ynabAPI = new ynab.API(accessToken);
 
 const formatter = new Intl.NumberFormat('en-US', {
@@ -80,6 +78,10 @@ const formatRetirementValues = (totalValue) => {
   const monthlyIncome = formatter.format((totalValue * safeWithdrawlRate) / 12);
   return { totalBalance, annualIncome, monthlyIncome };
 };
+
+/*
+-------- Expense Functions -----------
+*/
 
 /** Returns categroy group information for groups in config.js */
 const filterCategoryGroupData = (allCategoryGroups) => {
