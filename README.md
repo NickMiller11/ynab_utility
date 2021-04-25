@@ -4,7 +4,7 @@ This is a small utility that performs different calculations to help us understa
 
 ## Config
 
-You will need to create a `config.js` file that exports the below information:
+You will need to update `config.js` with your budgeting information:
 
 ```js
 const config = {
