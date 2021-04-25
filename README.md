@@ -36,3 +36,7 @@ For the `categoryGroups` property - we created our personal category groups base
 For example, we place categories for expenses that we save towards every month but are only pay infrequently (for example, once a year) in a 'budgeted' category group. We can mark these with `value: 'budgeted'` in the config file. Other expenses paid every month, like utilities, are in an 'activity' category group and we want to take the dollar value in the 'activity' column.
 
 Only dollar amounts from categories in groups of type `essential` are included in the "Essential expenses this month:" section of the output. Dollar amounts from both `essential` and `nonessential` types are included in the total expenses. 
+
+### Safe Withdrawal Rate
+
+This is the percentage of your retirement savings that you can withdraw per year, expressed as a decimal.
