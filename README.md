@@ -1,4 +1,8 @@
+# YNAB Utility
+
 This is a small utility that performs different calculations to help us understand our progress towards FIRE.
+
+## Config
 
 You will need to create a `config.js` file that exports the below information:
 
@@ -17,8 +21,18 @@ const config = {
 };
 ```
 
-For the `categoryGroups` property - we created our personal category groups based on whether we want the expenditure amount to be taken from the 'budgeted' column or 'activity' column, as well as whether the categories are for essential or nonessential purchases. 
+### Access Token
 
-For example, we place categories for expenses that we save towards every month but are only pay once a year in a 'budgeted' category group. We mark these with `value: 'budgeted'`. Other expenses paid every month, like utilities, are in an 'activity' category group and we want to take the value in the 'activity' column.
+You can find out how to get your personal access token [here](https://api.youneedabudget.com/#personal-access-tokens)
 
-Essential and nonessential expenditures affect the reporting in the output.
+### Retirement Account Names
+
+These are the names of your accounts that you want included in the "Retirement Income" section of the output.
+
+### Category Groups
+
+For the `categoryGroups` property - we created our personal category groups based on whether we want expenditure amounts to be taken from the 'budgeted' column or 'activity' column, as well as whether the categories are for essential or nonessential purchases. 
+
+For example, we place categories for expenses that we save towards every month but are only pay infrequently (for example, once a year) in a 'budgeted' category group. We can mark these with `value: 'budgeted'` in the config file. Other expenses paid every month, like utilities, are in an 'activity' category group and we want to take the dollar value in the 'activity' column.
+
+Only dollar amounts from categories in groups of type `essential` are included in the "Essential expenses this month:" section of the output. Dollar amounts from both `essential` and `nonessential` types are included in the total expenses. 
