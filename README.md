@@ -2,6 +2,8 @@
 
 This is a small utility that performs different calculations to help us understand our progress towards FIRE.
 
+You can run it with `node ynab.js` when in the project's root directory.
+
 ## Config
 
 You will need to update `config.js` with your budgeting information:
