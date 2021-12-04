@@ -98,10 +98,11 @@ const extractExpendituresByType = (filteredGroupRawData) => {
 
   categoryGroups.forEach(group => {
     const groupData = { name: group.name, type: group.type };
-    const categoryGroupData = filteredGroupRawData.find(groupObject => groupObject.name === group.name);
-    const valueType = categoryGroupData.name.split(' ')[0];
+    const categoryGroupData = filteredGroupRawData.filter(categoryObject => categoryObject.category_group_name === group.name);
+    
+    const valueType = group.name.split(' ')[0];
     const values = [];
-    categoryGroupData.categories.forEach(category => {
+    categoryGroupData.forEach(category => {
       valueType === 'Fixed' ? values.push(category.budgeted / 1000) : values.push(category.activity / -1000)
     })
 
@@ -125,10 +126,57 @@ const formatExpenditureOutput = (selectedGroupData) => {
 
 /** Retrieves category group information and returns expenditure amount based on group value and type */
 const calculateExpenditureValues = async (budgetId) => {
+  // get category group ids from category names
+  // get budget data for that month
+  // group categories by category group
+  // do the math to either get budgeted or activity amounts and add up
+
+  /*
+  {
+    '5317468b-d9ff-44d7-ab90-b0bccbf6743d': 'Fixed Essential'
+  }
+  */
+
+  const categoryGroupNames = categoryGroups.map(group => group.name)
+  console.log(categoryGroupNames)
+
   const rawCategoryData = await ynabAPI.categories.getCategories(budgetId);
-  const allCategoryGroups = rawCategoryData.data.category_groups;
-  const filteredGroupRawData = filterCategoryGroupData(allCategoryGroups);
-  selectedGroupData = extractExpendituresByType(filteredGroupRawData);
+  // console.log(JSON.stringify(rawCategoryData))
+  const cg = {}
+  rawCategoryData.data.category_groups.map(categoryGroup => {
+    return {
+      name: categoryGroup.name,
+      id: categoryGroup.id,
+    };
+  }).filter(group => {
+    return categoryGroupNames.includes(group.name)
+  }).forEach(group => {
+    cg[group.id] = group.name;
+  })
+
+  console.log(cg)
+
+
+  const currentBudgetMonthData = await ynabAPI.months.getBudgetMonth(budgetId, 'current');
+  // console.log(JSON.stringify(currentBudgetMonthData))
+  const filteredData = currentBudgetMonthData.data.month.categories.filter(category => {
+    return Object.keys(cg).includes(category.category_group_id)
+  })
+
+  filteredData.forEach(category => {
+    category.category_group_name = cg[category.category_group_id]
+  })
+
+  console.log(JSON.stringify(filteredData))
+
+  // const allCategoryGroups = rawCategoryData.data.category_groups;
+  // console.log(allCategoryGroups)
+
+  // const filteredGroupRawData = filterCategoryGroupData(allCategoryGroups);
+  // console.log(filteredGroupRawData);
+
+  selectedGroupData = extractExpendituresByType(filteredData);
+  // console.log(selectedGroupData);
 
   return formatExpenditureOutput(selectedGroupData);
 };
