@@ -4,9 +4,10 @@
   "description": "A sliced and diced perspective on our budget",
   "main": "ynab.js",
   "dependencies": {
+    "luxon": "^2.1.1",
+    "prompts": "^2.4.2",
     "ynab": "^1.20.0"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

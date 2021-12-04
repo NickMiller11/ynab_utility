@@ -1,4 +1,6 @@
 const ynab = require("ynab");
+const prompts = require('prompts');
+const { DateTime } = require("luxon");
 
 const { 
   accessToken, 
@@ -124,25 +126,11 @@ const formatExpenditureOutput = (selectedGroupData) => {
   return { essentialExp, totalExp }
 }
 
-/** Retrieves category group information and returns expenditure amount based on group value and type */
-const calculateExpenditureValues = async (budgetId) => {
-  // get category group ids from category names
-  // get budget data for that month
-  // group categories by category group
-  // do the math to either get budgeted or activity amounts and add up
-
-  /*
-  {
-    '5317468b-d9ff-44d7-ab90-b0bccbf6743d': 'Fixed Essential'
-  }
-  */
-
-  const categoryGroupNames = categoryGroups.map(group => group.name)
-  console.log(categoryGroupNames)
-
+/** Returns an object of category group id's with values as category group names specified in config file */
+const getCategoryGroupMapping = async (budgetId) => {
+  const categoryGroupNames = categoryGroups.map(group => group.name);
   const rawCategoryData = await ynabAPI.categories.getCategories(budgetId);
-  // console.log(JSON.stringify(rawCategoryData))
-  const cg = {}
+  const cg = {};
   rawCategoryData.data.category_groups.map(categoryGroup => {
     return {
       name: categoryGroup.name,
@@ -154,30 +142,28 @@ const calculateExpenditureValues = async (budgetId) => {
     cg[group.id] = group.name;
   })
 
-  console.log(cg)
+  return cg;
+}
 
-
-  const currentBudgetMonthData = await ynabAPI.months.getBudgetMonth(budgetId, 'current');
-  // console.log(JSON.stringify(currentBudgetMonthData))
-  const filteredData = currentBudgetMonthData.data.month.categories.filter(category => {
-    return Object.keys(cg).includes(category.category_group_id)
+/** Filters budget data from all categories that belong to specified category group  */
+const filterByCategoryGroup = (currentBudgetMonthData, categoryGroupMapping) => {
+  const filteredByCategoryGroup = currentBudgetMonthData.data.month.categories.filter(category => {
+    return Object.keys(categoryGroupMapping).includes(category.category_group_id)
   })
 
-  filteredData.forEach(category => {
-    category.category_group_name = cg[category.category_group_id]
-  })
+  filteredByCategoryGroup.forEach(category => {
+    category.category_group_name = categoryGroupMapping[category.category_group_id]
+  });
 
-  console.log(JSON.stringify(filteredData))
+  return filteredByCategoryGroup;
+};
 
-  // const allCategoryGroups = rawCategoryData.data.category_groups;
-  // console.log(allCategoryGroups)
-
-  // const filteredGroupRawData = filterCategoryGroupData(allCategoryGroups);
-  // console.log(filteredGroupRawData);
-
-  selectedGroupData = extractExpendituresByType(filteredData);
-  // console.log(selectedGroupData);
-
+/** Retrieves category group information and returns expenditure amount based on group value and type */
+const calculateExpenditureValues = async (budgetId, month) => {
+  const categoryGroupMapping = await getCategoryGroupMapping(budgetId);
+  const currentBudgetMonthData = await ynabAPI.months.getBudgetMonth(budgetId, month);
+  const dataByCategoryGroup = filterByCategoryGroup(currentBudgetMonthData, categoryGroupMapping);
+  selectedGroupData = extractExpendituresByType(dataByCategoryGroup);
   return formatExpenditureOutput(selectedGroupData);
 };
 
@@ -188,17 +174,38 @@ const outputExpenditureReport = (expenses) => {
   console.log()
   console.log('----------- Expenses ------------')
   console.log();
-  console.log(`Essential expenses this month: ${essentialExp}`);
-  console.log(`Total expenses this month: ${totalExp}`);
+  console.log(`Monthly essential expenses: ${essentialExp}`);
+  console.log(`Monthly total expenses: ${totalExp}`);
   console.log();
 };
 
+/** Prompt user to get budget data from this month or last month */
+const getMonthFromPrompt = async () => {
+  console.log();
+  const response = await prompts(
+    {
+      type: 'select',
+      name: 'month',
+      message: 'Do you want expenses from last month or this month',
+      choices: [
+        { title: 'Last Month', value: 1 },
+        { title: 'This Month', value: 0 }
+      ],
+      initial: 1,
+      format: val => DateTime.now().startOf('month').minus({ months: val }).toISO().substring(0, 10)
+    }
+  );
+
+  return response.month;
+}
+
 /** Main function */
 (async function() {
+  const month = await getMonthFromPrompt();
   const budgetId = await getBudgetId();
   const retirementValues = await calculateRetirementValue(budgetId); 
   outputIncomeReport(retirementValues);
-  const expenditureValues = await calculateExpenditureValues(budgetId);
+  const expenditureValues = await calculateExpenditureValues(budgetId, month);
   outputExpenditureReport(expenditureValues);
 })();
 
