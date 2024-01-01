@@ -9,7 +9,7 @@ You can run it with `node ynab.js` when in the project's root directory.
 You will need to update `config.js` with your budgeting information:
 
 ```js
-const config = {
+module.exports = {
   accessToken: 'accessTokenHere',
   budgetName: 'My Budget Name',
   retirementAccountNames: ['Account-1', 'Account-2', 'Account-3'],
